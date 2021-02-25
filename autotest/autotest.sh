@@ -13,7 +13,49 @@ LATEST_GITLOG_HASH="xxxx"
 
 echo "iteration, enemy_level, game_time(s), date, my_score, enemy_score, battle_result, my_side" > $RESULTLOG
 
+# get option
 LOOP_TIMES=10
+IS_CAPTURE_VIDEO="false"
+while getopts l:c: OPT
+do
+  case $OPT in
+    "l" ) LOOP_TIMES="$OPTARG" ;;
+    "c" ) IS_CAPTURE_VIDEO="$OPTARG" ;;
+  esac
+done
+# echo option parameter
+echo "LOOP_TIMES: ${LOOP_TIMES}"
+echo "IS_CAPTURE_VIDEO: ${IS_CAPTURE_VIDEO}"
+
+
+pushd ${BURGER_WAR_KIT_REPOSITORY}
+source autotest/slack.sh
+popd
+
+function search_window() {
+    xdotool search --sync --onlyvisible --name "$1"
+}
+
+function adjust_layout() {
+    local -ir UNIT=700
+
+    # Gazebo window is shown with maximized
+    # Ref: https://stackoverflow.com/questions/23850499/how-to-move-or-resize-x11-windows-even-if-they-are-maximized
+    local -r GAZEBO=$(search_window "Gazebo")
+    wmctrl -i -r ${GAZEBO} -b remove,maximized_vert,maximized_horz
+    xdotool windowunmap --sync ${GAZEBO}
+    xdotool windowmap --sync ${GAZEBO}
+    wmctrl -i -r ${GAZEBO} -e 0,0,0,${UNIT},${UNIT}
+    xdotool windowactivate --sync ${GAZEBO}
+
+    local -r SCORE_BOARD=$(search_window "burger war")
+    wmctrl -i -r ${SCORE_BOARD} -e 0,0,${UNIT},${UNIT},${UNIT}
+    xdotool windowactivate --sync ${SCORE_BOARD}
+
+    local -r RVIZ=$(search_window "RViz")
+    wmctrl -i -r ${RVIZ} -e 0,${UNIT},0,${UNIT},$((2*${UNIT}))
+    xdotool windowactivate --sync ${RVIZ}
+}
 
 function do_game(){
     ITERATION=$1
@@ -27,15 +69,19 @@ function do_game(){
     # change directory
     pushd ${BURGER_WAR_KIT_REPOSITORY}
 
+    # start capture
+    do_capture "start"
+    
     # wakeup gazebo/judgeserver
     PROCESS_NUM=`ps -ux | grep "sim_with_judge.sh" | grep -v "grep"  | wc -l`
     if [ $PROCESS_NUM -eq 0 ]; then
 	# wakeup at once
-	gnome-terminal -- bash scripts/sim_with_judge.sh # -s ${MY_SIDE}
+	gnome-terminal -- bash scripts/sim_with_judge.sh -a # -s ${MY_SIDE}
 	sleep 30
     fi
     # start
-    gnome-terminal -- bash scripts/start.sh -l ${ENEMY_LEVEL} # -s ${MY_SIDE}
+    gnome-terminal -- bash scripts/start.sh -l ${ENEMY_LEVEL} -a # -s ${MY_SIDE}
+    adjust_layout
 
     # wait game finish
     sleep $GAME_TIME
@@ -59,10 +105,35 @@ function do_game(){
     # output result
     echo "$ITERATION, $ENEMY_LEVEL, $GAME_TIME, $DATE, $MY_SCORE, $ENEMY_SCORE, $BATTLE_RESULT, $MY_SIDE" >> $RESULTLOG
     tail -1 $RESULTLOG
+    send_slack "$ITERATION" "$ENEMY_LEVEL" "$GAME_TIME" "$DATE" "$MY_SCORE" "$ENEMY_SCORE" "$BATTLE_RESULT" "$MY_SIDE"
 
-    # reset
-    bash scripts/reset.sh
-    sleep 3
+    # save video
+    TODAY=`date +"%Y%m%d"`
+    VIDEO_DIRECTORY_PATH="${HOME}/video/${TODAY}/"
+    mkdir -p ${VIDEO_DIRECTORY_PATH}
+    VIDEO_NAME="${VIDEO_DIRECTORY_PATH}/"GAME_${DATE}_${ITERATION}_${ENEMY_LEVEL}_${GAME_TIME}_${MY_SCORE}_${ENEMY_SCORE}_${BATTLE_RESULT}_${MY_SIDE}".mp4"
+    do_capture "stop" "$VIDEO_NAME"
+
+    # upload video to youtube if LOSE
+    if [ -f "${VIDEO_NAME}" ] && [ "${BATTLE_RESULT}" = "LOSE" ]; then
+	if which youtube-upload > /dev/null &&
+		[ -f "${HOME}/.client_secrets.json" ] &&
+		[ -f "${HOME}/.youtube-upload-credentials.json" ]; then
+	    local VIDEO_TITLE="$(basename ${VIDEO_NAME})"
+	    local VIDEO_ID=$(youtube-upload --title "${VIDEO_TITLE}" "${VIDEO_NAME}")
+	    if [ $? -eq 0 ]; then
+		send_slack_video "${VIDEO_TITLE}" "${VIDEO_ID}"
+	    fi
+	else
+	    echo "${FUNCNAME[0]}: ${LINENO}: youtube-upload is unavailable" > /dev/stderr
+	fi
+    fi
+
+    ## reset
+    #bash scripts/reset.sh
+    #sleep 3
+    # stop
+    stop_game
 
     popd
 }
@@ -71,9 +142,33 @@ function stop_game(){
     # stop
     # wait stop until all process is end
     pushd ${BURGER_WAR_KIT_REPOSITORY}
-    bash scripts/stop.sh -s true
+    bash scripts/stop.sh -s "true"
     sleep 10
     popd
+}
+
+function do_capture(){
+
+    local CAPTURE_OPTION=$1
+    local VIDEO_NAME=$2
+    
+    # if true, capture video
+    if [ ${IS_CAPTURE_VIDEO} != "true" ]; then
+	echo "skip capture"
+	return 0
+    fi
+
+    pushd ${BURGER_WAR_KIT_REPOSITORY}
+    if [ ${CAPTURE_OPTION} == "start" ]; then    
+	bash scripts/capture.sh -m "start"
+    elif [ ${CAPTURE_OPTION} == "stop" ]; then
+	bash scripts/capture.sh -m "stop" -n ${VIDEO_NAME}
+    else
+	echo "invalid option: ${CAPTURE_OPTION}"
+    fi
+    popd
+
+    return 0
 }
 
 # commentout--->
@@ -168,4 +263,3 @@ do
     #do_push
 done
 
-stop_game
