@@ -5,6 +5,14 @@
   <xacro:include filename="$(find burger_war)/models/burgerbot.gazebo.xacro"/>
   <xacro:include filename="$(find burger_war)/models/burger_bot_common.xacro"/>
 
+    <gazebo>
+      <plugin name="ground_truth" filename="libgazebo_ros_p3d.so">
+          <frameName>world</frameName>
+          <bodyName>base_link</bodyName>
+          <topicName>red_bot/tracker</topicName>
+          <updateRate>10.0</updateRate>
+      </plugin>
+    </gazebo>
   
   <joint name="tag1_joint" type="fixed">
     <!--<origin rpy="-1.571 3.1415 0" xyz="-0.03 0.07 0.09"/>-->
