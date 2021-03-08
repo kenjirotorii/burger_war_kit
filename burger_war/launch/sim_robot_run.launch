@@ -78,6 +78,22 @@
       </include>  
     </group>
 
+    <!-- level 9 --> 
+    <group if="$(eval enemy_level==9)"> 
+      <include file="$(find burger_war_level9)/launch/your_burger.launch">
+        <arg name="name_space" value="enemy_bot" />
+	<arg name="side" value="b" />
+      </include>  
+    </group>    
+
+    <!-- level 10 --> 
+    <group if="$(eval enemy_level==10)"> 
+      <include file="$(find burger_war_level10)/launch/your_burger.launch">
+        <arg name="name_space" value="enemy_bot" />
+	<arg name="side" value="b" />
+      </include>  
+    </group>
+    
   </group>
   
 </launch>
