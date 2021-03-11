@@ -7,13 +7,26 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.35 0.35 0.2</size>
+            <size>0.4 0.4 0.2</size>
           </box>
         </geometry>
       </collision>
       <visual name="visual">
         <pose>0 0 0 0 0 0</pose>
         <geometry> <box> <size>0.35 0.35 0.2</size> </box> </geometry>
+        <material><script><name>Gazebo/White</name></script></material>
+      </visual>
+      <collision name="collision_in">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.25 0.25 0.2</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="visual_in">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry> <box> <size>0.25 0.25 0.2</size> </box> </geometry>
         <material><script><name>Gazebo/White</name></script></material>
       </visual>
     </link>
