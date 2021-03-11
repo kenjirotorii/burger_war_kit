@@ -5,11 +5,20 @@
     <link name="link">
       <collision name="collision">
         <pose>0 0 0 0 0 0</pose>
-        <geometry><box><size>0.2 0.15 0.2</size></box></geometry>
+        <geometry><box><size>0.25 0.2 0.2</size></box></geometry>
       </collision>
       <visual name="visual">
         <pose>0 0 0 0 0 0</pose>
         <geometry><box><size>0.2 0.15 0.2</size></box></geometry>
+        <material><script><name>Gazebo/White</name></script></material>
+      </visual>
+      <collision name="collision_in">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry><box><size>0.1 0.05 0.2</size></box></geometry>
+      </collision>
+      <visual name="visual_in">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry><box><size>0.1 0.05 0.2</size></box></geometry>
         <material><script><name>Gazebo/White</name></script></material>
       </visual>
     </link>
